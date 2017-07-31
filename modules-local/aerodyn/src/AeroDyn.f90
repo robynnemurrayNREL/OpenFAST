@@ -388,6 +388,8 @@ subroutine AD_Init( InitInp, u, p, x, xd, z, OtherState, y, m, Interval, InitOut
       end do
    end if
    
+    InitOut%IncludeAddedMass = InputFileData%IncludeAddedMass
+    
       !............................................................................................
       ! Initialize Jacobian:
       !............................................................................................
@@ -414,6 +416,8 @@ contains
       IF ( UnEcho > 0 ) CLOSE( UnEcho )
       
    end subroutine Cleanup
+   
+  
 
 end subroutine AD_Init
 !----------------------------------------------------------------------------------------------------------------------------------   
@@ -442,7 +446,24 @@ subroutine Init_MiscVars(m, p, u, y, errStat, errMsg)
       call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
    call AllocAry( m%WithoutSweepPitchTwist, 3_IntKi, 3_IntKi, p%NumBlNds, p%numBlades, 'OtherState%WithoutSweepPitchTwist', ErrStat2, ErrMsg2 )
       call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
-      
+   
+   call allocAry( m%SigmaCavit, p%NumBlNds, p%numBlades, 'm%SigmaCavit', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%SigmaCavitCrit, p%NumBlNds, p%numBlades, 'm%SigmaCavitCrit', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%CavitWarnSet, p%NumBlNds, p%numBlades, 'm%CavitWarnSet', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   m%SigmaCavit     = 0.0_ReKi      !Init to zero for output files in case a cavit check isnt done but output is requested 
+   m%SigmaCavitCrit = 0.0_ReKi
+   m%CavitWarnSet   = .false.
+   
+   call allocAry( m%FAddedMass, p%NumBlNds, p%numBlades, 'm%FAddedMass', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%FAddedMass_Vec, 3_IntKi, p%NumBlNds, p%numBlades, 'm%FAddedMass', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%AddedMass, p%NumBlNds, p%numBlades, 'm%AddedMass', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%TransposeOrient, 3_IntKi,3_IntKi, p%NumBlNds, 'm%TransposeOrient', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+   call allocAry( m%FAddedMassTwr, 3_IntKi,  p%NumTwrNds, 'm%FAddedMassTwr', errStat2, errMsg2); call setErrStat(errStat2,ErrMsg2,ErrStat,ErrMsg,RoutineName)
+
+   m%TransposeOrient=0.0_ReKi
+  
+
+   
          ! arrays for output
 #ifdef DBG_OUTS
    allocate( m%AllOuts(0:p%NumOuts), STAT=ErrStat2 ) ! allocate starting at zero to account for invalid output channels
@@ -643,6 +664,7 @@ subroutine Init_u( u, p, InputFileData, InitInp, errStat, errMsg )
                        ,Orientation     = .true.    &
                        ,TranslationDisp = .true.    &
                        ,TranslationVel  = .true.    &
+                       ,TranslationAcc  = .true.    &
                       )
             call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
@@ -672,6 +694,8 @@ subroutine Init_u( u, p, InputFileData, InitInp, errStat, errMsg )
       u%TowerMotion%Orientation     = u%TowerMotion%RefOrientation
       u%TowerMotion%TranslationDisp = 0.0_R8Ki
       u%TowerMotion%TranslationVel  = 0.0_ReKi
+      u%TowerMotion%TranslationAcc  = 0.0_ReKi
+
       
    end if ! we compute tower loads
    
@@ -767,6 +791,8 @@ subroutine Init_u( u, p, InputFileData, InitInp, errStat, errMsg )
                           ,Orientation     = .true.                         &
                           ,TranslationDisp = .true.                         &
                           ,TranslationVel  = .true.                         &
+                          ,TranslationAcc  = .true.                         &
+
                          )
                call SetErrStat( errStat2, errMsg2, errStat, errMsg, RoutineName )
 
@@ -814,6 +840,8 @@ subroutine Init_u( u, p, InputFileData, InitInp, errStat, errMsg )
          u%BladeMotion(k)%Orientation     = u%BladeMotion(k)%RefOrientation
          u%BladeMotion(k)%TranslationDisp = 0.0_R8Ki
          u%BladeMotion(k)%TranslationVel  = 0.0_ReKi
+         u%BladeMotion(k)%TranslationAcc  = 0.0_ReKi
+
    
    end do !k=numBlades
    
@@ -845,6 +873,12 @@ subroutine SetParameters( InitInp, InputFileData, p, ErrStat, ErrMsg )
    p%TwrPotent        = InputFileData%TwrPotent
    p%TwrShadow        = InputFileData%TwrShadow
    p%TwrAero          = InputFileData%TwrAero
+   p%CavitCheck       = InputFileData%CavitCheck
+   p%Gravity          = InitInp%Gravity
+   p%IncludeAddedMass = InputFileData%IncludeAddedMass
+   p%CaBlade          = InputFileData%CaBlade
+
+
    
    if (InitInp%Linearize) then
       p%FrozenWake = InputFileData%FrozenWake 
@@ -866,6 +900,9 @@ subroutine SetParameters( InitInp, InputFileData, p, ErrStat, ErrMsg )
    
    p%AirDens          = InputFileData%AirDens          
    p%KinVisc          = InputFileData%KinVisc
+   p%Patm             = InputFileData%Patm
+   p%Pvap             = InputFileData%Pvap
+   p%FluidDepth       = InputFileData%FluidDepth
    p%SpdSound         = InputFileData%SpdSound
    
   !p%AFI     ! set in call to AFI_Init() [called early because it wants to use the same echo file as AD]
@@ -1028,7 +1065,7 @@ end subroutine AD_UpdateStates
 !! The descriptions of the output channels are not given here. Please see the included OutListParameters.xlsx sheet for
 !! for a complete description of each output parameter.
 subroutine AD_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
-! NOTE: no matter how many channels are selected for output, all of the outputs are calcalated
+! NOTE: no matter how many channels are selected for output, all of the outputs are calculated
 ! All of the calculated output channels are placed into the m%AllOuts(:), while the channels selected for outputs are
 ! placed in the y%WriteOutput(:) array.
 !..................................................................................................................................
@@ -1049,15 +1086,17 @@ subroutine AD_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
 
    integer, parameter                           :: indx = 1  ! m%BEMT_u(1) is at t; m%BEMT_u(2) is t+dt
    integer(intKi)                               :: i
+   integer(intKi)                               :: j
+
    integer(intKi)                               :: ErrStat2
    character(ErrMsgLen)                         :: ErrMsg2
    character(*), parameter                      :: RoutineName = 'AD_CalcOutput'
-   
-   
+   real(ReKi)                                   :: SigmaCavitCrit, SigmaCavit
+
    ErrStat = ErrID_None
    ErrMsg  = ""
 
-   
+      
    call SetInputs(p, u, m, indx, errStat2, errMsg2)      
       call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
             
@@ -1067,13 +1106,41 @@ subroutine AD_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
    call BEMT_CalcOutput(t, m%BEMT_u(indx), p%BEMT, x%BEMT, xd%BEMT, z%BEMT, OtherState%BEMT, p%AFI%AFInfo, m%BEMT_y, m%BEMT, ErrStat2, ErrMsg2 )
       call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)
                   
-   call SetOutputsFromBEMT(p, m, y )
+   call SetOutputsFromBEMT(t, u, p, m, y )
                           
    if ( p%TwrAero ) then
       call ADTwr_CalcOutput(p, u, m, y, ErrStat2, ErrMsg2 )
          call SetErrStat(ErrStat2, ErrMsg2, ErrStat, ErrMsg, RoutineName)      
    end if
+   
+   if ( p%CavitCheck ) then      ! Calculate the cavitation number for the airfoil at the node in quesiton, and compare to the critical cavitation number based on the vapour pressure and submerged depth       
+      do j = 1,p%numBlades ! Loop through all blades
+         do i = 1,p%NumBlNds  ! Loop through all nodes
+             
+       !need to set this up to not do this on the FAST_Solution0 iteraiton since Vrel = 0 then              
+      if ( EqualRealNos( m%BEMT_y%Vrel(i,j), 0.0_ReKi ) ) then      
+          call SetErrStat( ErrID_Fatal, 'Vrel cannot be zero to do a cavitation check', ErrStat, ErrMsg, RoutineName) 
+             if (ErrStat >= AbortErrLev) return
+        !  call SetErrStat( ErrID_Info, 'Vrel cannot be zero to do a cavitation check', ErrStat, ErrMsg, RoutineName )
+   
+      else 
+      SigmaCavit= -1* m%BEMT_y%Cpmin(i,j) ! Local cavitation number on node j                                               
+      SigmaCavitCrit= ( ( p%Patm + ( p%Gravity * (p%FluidDepth - (  u%BladeMotion(j)%Position(3,i) + u%BladeMotion(j)%TranslationDisp(3,i) - u%HubMotion%Position(3,1))) * p%airDens)  - p%Pvap ) / ( 0.5_ReKi * p%airDens * m%BEMT_y%Vrel(i,j)**2)) ! Critical value of Sigma, cavitation occurs if local cavitation number is greater than this
+                                                                  
+         if ( (SigmaCavitCrit < SigmaCavit) .and. (.not. (m%CavitWarnSet(i,j)) ) ) then     
+              call WrScr( NewLine//'Cavitation occurred at blade '//trim(num2lstr(j))//' and node '//trim(num2lstr(i))//'.' )
+              m%CavitWarnSet(i,j) = .true.
+         end if 
          
+      end if                
+      m%SigmaCavit(i,j)= SigmaCavit                 
+      m%SigmaCavitCrit(i,j)=SigmaCavitCrit  
+                           
+   end do   ! p%NumBlNds
+     end do  ! p%numBlades
+       end if   ! Cavitation check
+      
+
    !-------------------------------------------------------   
    !     get values to output to file:  
    !-------------------------------------------------------   
@@ -1100,8 +1167,7 @@ subroutine AD_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
       
    end if
    
-   
-   
+                                              
 end subroutine AD_CalcOutput
 !----------------------------------------------------------------------------------------------------------------------------------
 !> Tight coupling routine for solving for the residual of the constraint state equations
@@ -1338,20 +1404,20 @@ subroutine SetInputsForBEMT(p, u, m, indx, errStat, errMsg)
 end subroutine SetInputsForBEMT
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This subroutine converts outputs from BEMT (stored in m%BEMT_y) into values on the AeroDyn BladeLoad output mesh.
-subroutine SetOutputsFromBEMT(p, m, y )
-
+subroutine SetOutputsFromBEMT(t, u, p, m, y )
+   type(AD_InputType),      intent(in   )  :: u                               !< Input data
    type(AD_ParameterType),  intent(in   )  :: p                               !< AD parameters
    type(AD_OutputType),     intent(inout)  :: y                               !< AD outputs 
    type(AD_MiscVarType),    intent(inout)  :: m                               !< Misc/optimization variables
    !type(BEMT_OutputType),   intent(in   )  :: BEMT_y                          ! BEMT outputs
    !real(ReKi),              intent(in   )  :: WithoutSweepPitchTwist(:,:,:,:) ! modified orientation matrix
+   real(DbKi),              intent(in   ) :: t          !< Current simulation time in seconds
 
    integer(intKi)                          :: j                      ! loop counter for nodes
    integer(intKi)                          :: k                      ! loop counter for blades
    real(reki)                              :: force(3)
    real(reki)                              :: moment(3)
    real(reki)                              :: q
-   
   
    
    force(3)    =  0.0_ReKi          
@@ -1363,21 +1429,37 @@ subroutine SetOutputsFromBEMT(p, m, y )
          force(1) =  m%BEMT_y%cx(j,k) * q * p%BEMT%chord(j,k)     ! X = normal force per unit length (normal to the plane, not chord) of the jth node in the kth blade
          force(2) = -m%BEMT_y%cy(j,k) * q * p%BEMT%chord(j,k)     ! Y = tangential force per unit length (tangential to the plane, not chord) of the jth node in the kth blade
          moment(3)=  m%BEMT_y%cm(j,k) * q * p%BEMT%chord(j,k)**2  ! M = pitching moment per unit length of the jth node in the kth blade
-         
-            ! save these values for possible output later:
+
+
+      m%AddedMass(j,k) = 0
+      m%FAddedMass_Vec(:,j,k)= 0
+      m%FAddedMass(j,k) = 0
+        
+      if (p%IncludeAddedMass) then    ! Calculate added mass contribution in flapwise direction for  jth node in the kth blade
+                
+              m%AddedMass(j,k)          =   p%CaBlade  *  p%airDens *  p%BEMT%chord(j,k) * p%BEMT%chord(j,k)  /4 * pi !* tanh(t)       !Added mass based on cylinder with chord length as diameter (kg)  
+              m%FAddedMass(j,k)         =   DOT_PRODUCT(u%BladeMotion(k)%TranslationAcc(:,j),  u%BladeMotion(k)%orientation(1,:,j))  * m%AddedMass(j,k)        !Added mass force (mass x acceleration) in the blade flapwise direction
+              m%TransposeOrient(:,:,j)  =   transpose(u%BladeMotion(k)%orientation(:,:,j))                          
+              m%FAddedMass_Vec(:,j,k)   =   MATMUL( m%TransposeOrient(:,:,j), [m%FAddedMass(j,k),0.0_ReKi ,0.0_ReKi ] )
+          
+      end if  !IncludeAddedMass
+
+               ! save these values for possible output later:
          m%X(j,k) = force(1)
          m%Y(j,k) = force(2)
          m%M(j,k) = moment(3)
          
             ! note: because force and moment are 1-d arrays, I'm calculating the transpose of the force and moment outputs
             !       so that I don't have to take the transpose of WithoutSweepPitchTwist(:,:,j,k)
-         y%BladeLoad(k)%Force(:,j)  = matmul( force,  m%WithoutSweepPitchTwist(:,:,j,k) )  ! force per unit length of the jth node in the kth blade
+         y%BladeLoad(k)%Force(:,j)  = matmul( force ,  m%WithoutSweepPitchTwist(:,:,j,k) )  -  m%FAddedMass_Vec(:,j,k)  ! force per unit length of the jth node in the kth blade with added mass force subtracted
          y%BladeLoad(k)%Moment(:,j) = matmul( moment, m%WithoutSweepPitchTwist(:,:,j,k) )  ! moment per unit length of the jth node in the kth blade
-         
+
+     
       end do !j=nodes
+ 
    end do !k=blades
-   
-   
+
+
 end subroutine SetOutputsFromBEMT
 !----------------------------------------------------------------------------------------------------------------------------------
 !> This routine validates the inputs from the AeroDyn input files.
@@ -1417,7 +1499,12 @@ SUBROUTINE ValidateInputData( InitInp, InputFileData, NumBl, ErrStat, ErrMsg )
    if (InputFileData%AirDens <= 0.0) call SetErrStat ( ErrID_Fatal, 'The air density (AirDens) must be greater than zero.', ErrStat, ErrMsg, RoutineName )
    if (InputFileData%KinVisc <= 0.0) call SetErrStat ( ErrID_Fatal, 'The kinesmatic viscosity (KinVisc) must be greater than zero.', ErrStat, ErrMsg, RoutineName )
    if (InputFileData%SpdSound <= 0.0) call SetErrStat ( ErrID_Fatal, 'The speed of sound (SpdSound) must be greater than zero.', ErrStat, ErrMsg, RoutineName )
-      
+   if (InputFileData%Pvap <= 0.0) call SetErrStat ( ErrID_Fatal, 'The vapour pressure (Pvap) must be greater than zero.', ErrStat, ErrMsg, RoutineName )
+   if (InputFileData%Patm <= 0.0) call SetErrStat ( ErrID_Fatal, 'The atmospheric pressure (Patm)  must be greater than zero.', ErrStat, ErrMsg, RoutineName )
+   if (InputFileData%FluidDepth <= 0.0) call SetErrStat ( ErrID_Fatal, 'Fluid depth (FluidDepth) must be greater than zero', ErrStat, ErrMsg, RoutineName )
+   if (InputFileData%CaBlade <= 0.0) call SetErrStat ( ErrID_Fatal, 'The added mass coefficient (CaBlade) must be greater than zero', ErrStat, ErrMsg, RoutineName )
+
+                       
    
       ! BEMT inputs
       ! bjj: these checks should probably go into BEMT where they are used...
@@ -1439,7 +1526,16 @@ SUBROUTINE ValidateInputData( InitInp, InputFileData, NumBl, ErrStat, ErrMsg )
       
       if (.not. InputFileData%FLookUp ) call SetErrStat( ErrID_Fatal, 'FLookUp must be TRUE for this version.', ErrStat, ErrMsg, RoutineName )
    end if
-           
+   
+   if ( InputFileData%CavitCheck .and. InputFileData%AFAeroMod == 2) then
+      call SetErrStat( ErrID_Fatal, 'Cannot use unsteady aerodynamics module with a cavitation check', ErrStat, ErrMsg, RoutineName )
+   end if
+        
+   if (InputFileData%InCol_Cpmin == 0 .and. InputFileData%CavitCheck) call SetErrStat( ErrID_Fatal, 'InCol_Cpmin must not be 0 to do a cavitation check.', ErrStat, ErrMsg, RoutineName )
+
+ if ( InputFileData%IncludeAddedMass .and. InitInp%Linearize) then
+      call SetErrStat( ErrID_Fatal, 'Cannot use linearization with added mass', ErrStat, ErrMsg, RoutineName )
+   end if
    
          ! validate the AFI input data because it doesn't appear to be done in AFI
    if (InputFileData%NumAFfiles  < 1) call SetErrStat( ErrID_Fatal, 'The number of unique airfoil tables (NumAFfiles) must be greater than zero.', ErrStat, ErrMsg, RoutineName )   
@@ -1817,12 +1913,19 @@ SUBROUTINE ADTwr_CalcOutput(p, u, m, y, ErrStat, ErrMsg )
       m%W_Twr(j)  =  TwoNorm( VL )            ! relative wind speed normal to the tower at node j      
       q     = 0.5 * p%TwrCd(j) * p%AirDens * p%TwrDiam(j) * m%W_Twr(j)
       
+     m%FAddedMassTwr(:,j)= 0
+      
          ! force per unit length of the jth node in the tower
       tmp(1) = q * VL(1)
       tmp(2) = q * VL(2)
       tmp(3) = 0.0_ReKi
       
-      y%TowerLoad%force(:,j) = matmul( tmp, u%TowerMotion%Orientation(:,:,j) ) ! note that I'm calculating the transpose here, which is okay because we have 1-d arrays
+      if (p%IncludeAddedMass) then    ! Calculate added mass contribution in flapwise direction for  jth node in tower                
+             m%FAddedMassTwr(:,j)      =   p%CaBlade  *  p%airDens *  p%TwrDiam(j)* p%TwrDiam(j)  /4 * pi * u%TowerMotion%TranslationAcc(:,j)!        !Added mass based on cylinder with diameter of tower (kg)  
+      end if  !IncludeAddedMass
+
+            
+      y%TowerLoad%force(:,j) = matmul( tmp, u%TowerMotion%Orientation(:,:,j) ) -  m%FAddedMassTwr(:,j) ! note that I'm calculating the transpose here, which is okay because we have 1-d arrays
       m%X_Twr(j) = tmp(1)
       m%Y_Twr(j) = tmp(2)
       
