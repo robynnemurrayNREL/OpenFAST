@@ -437,7 +437,7 @@ END SUBROUTINE ED_UpdateStates
 !! This SUBROUTINE is used to compute the output channels (motions and loads) and place them in the WriteOutput() array.
 !! NOTE: the descriptions of the output channels are not given here. Please see the included OutListParameters.xlsx sheet for
 !! for a complete description of each output parameter.
-!! NOTE: no matter how many channels are selected for output, all of the outputs are calcalated
+!! NOTE: no matter how many channels are selected for output, all of the outputs are calculated
 !! All of the calculated output channels are placed into the m\%AllOuts(:), while the channels selected for outputs are
 !! placed in the y\%WriteOutput(:) array.
 SUBROUTINE ED_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
@@ -643,6 +643,7 @@ SUBROUTINE ED_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
 
    ENDDO          ! K - All blades
 
+       
    DO J = 0,p%TwrNodes  ! Loop through the tower nodes / elements, starting at the tower base (0)
 
       LinAccET(:,J) = m%RtHS%LinAccETt(:,J)
@@ -686,6 +687,7 @@ SUBROUTINE ED_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
    MomH0B   = 0.001*MomH0B
 
 
+ 
    !...............................................................................................................................
    ! set the values in the AllOuts array:
    !...............................................................................................................................
@@ -951,7 +953,7 @@ SUBROUTINE ED_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
          DO J = ( p%BldGagNd(I) + 1 ),p%BldNodes ! Loop through blade nodes / elements above strain gage node
 
             TmpVec2  = m%RtHS%FSAero(:,K,J) - p%MassB(K,J)*( p%Gravity*m%CoordSys%z2 + LinAccES(:,J,K) )  ! Portion of FrcMGagB associated with element J
-            FrcMGagB = FrcMGagB + TmpVec2*p%DRNodes(J)
+            FrcMGagB = FrcMGagB + TmpVec2*p% DRNodes(J)
 
             TmpVec = CROSS_PRODUCT( m%RtHS%rS0S(:,K,J) - m%RtHS%rS0S(:,K,p%BldGagNd(I)), TmpVec2 )           ! Portion of MomMGagB associated with element J
             MomMGagB = MomMGagB + ( TmpVec + m%RtHS%MMAero(:,K,J) )*p%DRNodes(J)
@@ -1336,6 +1338,11 @@ SUBROUTINE ED_CalcOutput( t, u, p, x, xd, z, OtherState, y, m, ErrStat, ErrMsg )
             y%BladeLn2Mesh(K)%TranslationVel(1,NodeNum) =     m%RtHS%LinVelES(1,J2,K)
             y%BladeLn2Mesh(K)%TranslationVel(2,NodeNum) = -1.*m%RtHS%LinVelES(3,J2,K)
             y%BladeLn2Mesh(K)%TranslationVel(3,NodeNum) =     m%RtHS%LinVelES(2,J2,K)  
+            
+              ! Translational Acceleration (for water-power request for added mass calculations)
+               y%BladeLn2Mesh(K)%TranslationAcc(1,NodeNum) =     LinAccES(1,J2,K)
+               y%BladeLn2Mesh(K)%TranslationAcc(2,NodeNum) = -1.*LinAccES(3,J2,K)
+               y%BladeLn2Mesh(K)%TranslationAcc(3,NodeNum) =     LinAccES(2,J2,K)
                                                 
          END DO !J = 1,p%BldNodes ! Loop through the blade nodes / elements
                   
@@ -4122,13 +4129,13 @@ SUBROUTINE SetOutParam(OutList, p, ErrStat, ErrMsg )
                                    YawPzn ,    YawPzn ,    YawPzn ,    YawVzn ,    YawVzn ,    YawVzn /)
    CHARACTER(ChanLen), PARAMETER :: ParamUnitsAry(972) =  (/ &                     ! This lists the units corresponding to the allowed parameters
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
-                               "(deg/s^2) ","(rpm)     ","(kN∑m)    ","(deg/s^2) ","(kW)      ","(kN∑m)    ","(rpm)     ", &
+                               "(deg/s^2) ","(rpm)     ","(kN¬∑m)    ","(deg/s^2) ","(kW)      ","(kN¬∑m)    ","(rpm)     ", &
                                "(m)       ","(m)       ","(m)       ","(deg/s^2) ","(deg/s^2) ","(deg/s^2) ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ", &
                                "(rpm)     ","(rpm)     ","(rpm)     ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kW)      ","(kN∑m)    ","(deg/s^2) ", &
-                               "(deg/s^2) ","(deg/s^2) ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kW)      ","(kN¬∑m)    ","(deg/s^2) ", &
+                               "(deg/s^2) ","(deg/s^2) ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(rpm)     ","(rpm)     ","(rpm)     ","(deg)     ","(deg/s^2) ", &
                                "(deg)     ","(deg/s)   ","(deg/s^2) ","(deg/s^2) ","(deg/s^2) ","(deg/s)   ","(deg/s)   ", &
                                "(deg/s)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s)     ","(m/s)     ","(m/s)     ", &
@@ -4150,75 +4157,75 @@ SUBROUTINE SetOutParam(OutList, p, ErrStat, ErrMsg )
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(rad)     ","(rad)     ", &
                                "(m)       ","(rad)     ","(rad)     ","(rad)     ","(m)       ","(m)       ","(rad)     ", &
                                "(m)       ","(m)       ","(rad)     ","(m)       ","(m)       ","(rad)     ","(rad)     ", &
-                               "(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ","(kN)      ","(kN)      ","(kN)      ", &
+                               "(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ","(kN)      ","(kN)      ","(kN)      ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg/s^2) ","(deg)     ","(deg/s^2) ","(deg)     ", &
+                               "(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg/s^2) ","(deg)     ","(deg/s^2) ","(deg)     ", &
                                "(deg/s)   ","(kW)      ","(rpm)     ","(deg/s^2) ","(deg)     ","(deg/s)   ","(kN)      ", &
-                               "(kN∑m)    ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
+                               "(kN¬∑m)    ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ","(kN)      ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(kN)      ", &
                                "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
+                               "(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(deg)     ","(deg/s^2) ","(deg)     ","(deg/s)   ","(deg/s^2) ","(deg)     ","(deg)     ", &
-                               "(deg/s)   ","(kN∑m)    ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ", &
+                               "(deg/s)   ","(kN¬∑m)    ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
@@ -4226,37 +4233,37 @@ SUBROUTINE SetOutParam(OutList, p, ErrStat, ErrMsg )
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(deg)     ","(deg)     ","(m)       ","(deg)     ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(m/s^2)   ","(m/s^2)   ","(m/s^2)   ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg)     ","(deg)     ","(m)       ","(m)       ", &
                                "(m)       ","(m)       ","(m)       ","(m)       ","(kN)      ","(kN)      ","(kN)      ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(m)       ","(m)       ","(m)       ","(deg)     ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(m)       ","(m)       ","(m)       ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg/s^2) ","(deg/s^2) ","(deg/s^2) ","(kN)      ","(kN)      ", &
-                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN∑m)    ","(kN∑m)    ","(kN∑m)    ", &
-                               "(kN∑m)    ","(kN∑m)    ","(kN∑m)    ","(deg/s^2) ","(deg/s^2) ","(deg/s^2) ","(deg)     ", &
+                               "(kN)      ","(kN)      ","(kN)      ","(kN)      ","(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ", &
+                               "(kN¬∑m)    ","(kN¬∑m)    ","(kN¬∑m)    ","(deg/s^2) ","(deg/s^2) ","(deg/s^2) ","(deg)     ", &
                                "(deg)     ","(deg)     ","(deg/s)   ","(deg/s)   ","(deg/s)   ","(m/s^2)   ","(m/s^2)   ", &
                                "(m/s^2)   ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ","(m)       ", &
                                "(deg)     ","(deg)     ","(deg)     ","(deg/s)   ","(deg/s)   ","(deg/s)   "/)
@@ -7532,11 +7539,11 @@ SUBROUTINE CalculateForcesMoments( p, x, CoordSys, u, RtHSdat )
             RtHSdat%MMAero(2,K,J) =  u%BladePtLoads(K)%Moment(3,NodeNum) / p%DRNodes(J)
             RtHSdat%MMAero(3,K,J) = -u%BladePtLoads(K)%Moment(2,NodeNum) / p%DRNodes(J)
          end if
-                     
+                
          
       END DO !J
    END DO  ! K 
-   
+  
    
 !.....................................
 ! PFrcS0B and PMomH0B  
@@ -9203,7 +9210,7 @@ SUBROUTINE Init_u( u, p, x, InputFileData, m, ErrStat, ErrMsg )
    
                      
       !.......................................................
-      ! Create Point Mesh for loads input at hub pointù (from BeamDyn):
+      ! Create Point Mesh for loads input at hub point¬ù (from BeamDyn):
       !....................................................... 
     
    CALL MeshCreate( BlankMesh      = u%HubPtLoad            &
@@ -9472,7 +9479,7 @@ END SUBROUTINE Init_u
 !!
 !! For details, see:
 !! Press, W. H.; Flannery, B. P.; Teukolsky, S. A.; and Vetterling, W. T. "Runge-Kutta Method" and "Adaptive Step Size Control for 
-!!   Runge-Kutta." ß16.1 and 16.2 in Numerical Recipes in FORTRAN: The Art of Scientific Computing, 2nd ed. Cambridge, England: 
+!!   Runge-Kutta." ¬ß16.1 and 16.2 in Numerical Recipes in FORTRAN: The Art of Scientific Computing, 2nd ed. Cambridge, England: 
 !!   Cambridge University Press, pp. 704-716, 1992.
 SUBROUTINE ED_RK4( t, n, u, utimes, p, x, xd, z, OtherState, m, ErrStat, ErrMsg )
 !..................................................................................................................................
