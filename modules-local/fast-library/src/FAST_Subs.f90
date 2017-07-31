@@ -285,6 +285,8 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       RETURN
    END IF   
    
+    p_FAST%numBl = InitOutData_ED%NumBl          ! initialize number of blades    
+    
    ! ........................
    ! initialize BeamDyn 
    ! ........................
@@ -376,6 +378,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    ! ........................
    ! initialize AeroDyn 
    ! ........................
+
    ALLOCATE( AD14%Input( p_FAST%InterpOrder+1 ), AD14%InputTimes( p_FAST%InterpOrder+1 ), STAT = ErrStat2 )
       IF (ErrStat2 /= 0) THEN
          CALL SetErrStat(ErrID_Fatal,"Error allocating AD14%Input and AD14%InputTimes.",ErrStat,ErrMsg,RoutineName)
@@ -436,6 +439,7 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       InitInData_AD%RootName           = p_FAST%OutFileRoot
       InitInData_AD%HubPosition        = ED%Output(1)%HubPtMotion%Position(:,1)
       InitInData_AD%HubOrientation     = ED%Output(1)%HubPtMotion%RefOrientation(:,:,1)
+    
       
       do k=1,InitOutData_ED%NumBl
          InitInData_AD%BladeRootPosition(:,k)      = ED%Output(1)%BladeRootMotion(k)%Position(:,1)
@@ -464,12 +468,20 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
       END IF       
       
       AirDens = InitOutData_AD%AirDens
-      
-   ELSE
+      ELSE
       AirDens = 0.0_ReKi
-   END IF ! CompAero
+      END IF ! CompAero
    
-               
+        p_FAST%AD_Solve_Option1   = .FALSE.
+      if (InitOutData_AD%IncludeAddedMass .and. p_FAST%CompAero == Module_AD)   then   ! Set AD_Solve_Option1 = .TRUE. if added mass is used, otherwise set as false
+        p_FAST%AD_Solve_Option1 = .TRUE.
+      end if 
+      
+     if ( p_FAST%CompElast == Module_BD  .and. InitOutData_AD%IncludeAddedMass) THEN
+         call SetErrStat ( ErrID_Fatal, 'BeamDyn cannot be used when added mass is flagged "True" in AeroDyn input file', ErrStat, ErrMsg, RoutineName )
+    end if 
+     
+   
    ! ........................
    ! initialize InflowWind
    ! ........................   
@@ -1105,8 +1117,9 @@ SUBROUTINE FAST_InitializeAll( t_initial, p_FAST, y_FAST, m_FAST, ED, BD, SrvD, 
    end if
    
    m_FAST%ExternInput%LidarFocus = 1.0_ReKi  ! make this non-zero (until we add the initial position in the InflowWind input file)
-         
-   
+  
+  
+
    !...............................................................................................................................
    ! Destroy initializion data
    !...............................................................................................................................      
@@ -1462,7 +1475,7 @@ SUBROUTINE ValidateInputData(p, ErrStat, ErrMsg)
    INTEGER(IntKi)                                  :: ErrStat2          
    CHARACTER(ErrMsgLen)                            :: ErrMsg2            
    CHARACTER(*), PARAMETER                         :: RoutineName='ValidateInputData'
-   
+
    ErrStat = ErrID_None
    ErrMsg  = ""
    
@@ -1596,7 +1609,7 @@ SUBROUTINE ValidateInputData(p, ErrStat, ErrMsg)
       END IF
    END IF
    
-   
+  
 
 END SUBROUTINE ValidateInputData
 !----------------------------------------------------------------------------------------------------------------------------------
