@@ -81,11 +81,12 @@ typedef	^	FAST_ParameterType	IntKi	NumCrctn	-	-	-	"Number of correction iteratio
 typedef	^	FAST_ParameterType	IntKi	KMax	-	-	-	"Maximum number of input-output-solve iterations (KMax >= 1)"	-
 typedef	^	FAST_ParameterType	IntKi	numIceLegs	-	-	-	"number of suport-structure legs in contact with ice (IceDyn coupling)"	-
 typedef	^	FAST_ParameterType	IntKi	nBeams	-	-	-	"number of BeamDyn instances"	-
+typedef	^	FAST_ParameterType	IntKi	numBl	-	-	-	"number of blades"	-
 typedef	^	FAST_ParameterType	LOGICAL	ModuleInitialized	{NumModules}	-	-	"An array determining if the module has been initialized"	-
 # Data for Jacobians:
 typedef	^	FAST_ParameterType	DbKi	DT_Ujac	-	-	-	"Time between when we need to re-calculate these Jacobians"	s
 typedef	^	FAST_ParameterType	Reki	UJacSclFact	-	-	-	"Scaling factor used to get similar magnitudes between accelerations, forces, and moments in Jacobians"	-
-typedef	^	FAST_ParameterType	IntKi	SizeJac_Opt1	{9}	-	-	"(1)=size of matrix; (2)=size of ED portion; (3)=size of SD portion [2 meshes]; (4)=size of HD portion; (5)=size of BD portion blade 1; (6)=size of BD portion blade 2; (7)=size of BD portion blade 3; (8)=size of Orca portion; (9)=size of ExtPtfm portion;"	-
+typedef	^	FAST_ParameterType	IntKi	SizeJac_Opt1	{10}	-	-	"(1)=size of matrix; (2)=size of ED portion; (3)=size of SD portion [2 meshes]; (4)=size of HD portion; (5)=size of BD portion blade 1; (6)=size of BD portion blade 2; (7)=size of BD portion blade 3; (8)=size of Orca portion; (9)=size of ExtPtfm portion; (10)=size of AD portion;"	-
 # Feature switches and flags:
 typedef	^	FAST_ParameterType	IntKi	CompElast	-	-	-	"Compute blade loads (switch) {Module_ED; Module_BD}"	-
 typedef	^	FAST_ParameterType	IntKi	CompInflow	-	-	-	"Compute inflow wind conditions (switch) {Module_None; Module_IfW; Module_OpFM}"	-
@@ -97,6 +98,7 @@ typedef	^	FAST_ParameterType	IntKi	CompMooring	-	-	-	"Compute mooring system (sw
 typedef	^	FAST_ParameterType	IntKi	CompIce	-	-	-	"Compute ice loading (switch) {Module_None; Module_IceF, Module_IceD}"	-
 typedef	^	FAST_ParameterType	LOGICAL	UseDWM	-	-	-	"Use the DWM module in AeroDyn"	-
 typedef	^	FAST_ParameterType	LOGICAL	Linearize	-	-	-	"Linearization analysis (flag)"	-
+typedef	^	FAST_ParameterType	Logical	AD_Solve_Option1 	-	-	-	"Flag that tells us to use Option 1 solve for AD" -
 # Input file names:
 typedef	^	FAST_ParameterType	CHARACTER(1024)	EDFile	-	-	-	"The name of the ElastoDyn input file"	-
 typedef	^	FAST_ParameterType	CHARACTER(1024)	BDBldFile	{MaxNBlades}	-	-	"Name of files containing BeamDyn inputs for each blade"	-
@@ -444,6 +446,13 @@ typedef	^	FAST_ModuleMapType	MeshType	u_BD_RootMotion	{:}	-	-	"copy of  BD input
 typedef	^	FAST_ModuleMapType	MeshType	y_BD_BldMotion_4Loads	{:}	-	-	"BD blade motion output at locations on DistrLoad input meshes"
 typedef	^	FAST_ModuleMapType	MeshType	u_Orca_PtfmMesh	-	-	-	"copy of Orca PtfmMesh input mesh"
 typedef	^	FAST_ModuleMapType	MeshType	u_ExtPtfm_PtfmMesh	-	-	-	"copy of ExtPtfm_MCKF PtfmMesh input mesh"
+typedef	^	FAST_ModuleMapType	MeshType	u_ED_TowerPtLoads	-	-	-	"copy of  ED input mesh"
+typedef	^	FAST_ModuleMapType	MeshType	u_ED_BladePtLoads	{:}	-	-	"copy of  ED input mesh"
+typedef	^	FAST_ModuleMapType	MeshType	u_AD_TowerMotion	-	-	-	"copy of  AD input mesh"
+typedef	^	FAST_ModuleMapType	MeshType	u_AD_BladeMotion	{:}	-	-	"copy of  AD input mesh"
+typedef	^	FAST_ModuleMapType	MeshType	u_BD_DistrLoad	{:} -	-	"copy of  BD input meshes"
+
+
 # ..... FAST_ExternalInput data .......................................................................................................
 typedef	FAST	FAST_ExternInputType	ReKi	GenTrq	-	-	-	"generator torque input from Simulink/Labview"
 typedef	^	FAST_ExternInputType	ReKi	ElecPwr	-	-	-	"electric power input from Simulink/Labview"
